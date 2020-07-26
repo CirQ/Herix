@@ -9,7 +9,7 @@ class HerixApp(ttk.Notebook):
     def __init__(self, master=None):
         super().__init__(master)
         self.winfo_toplevel().title("Herix")
-        self.winfo_toplevel().geometry('800x600')
+        # self.winfo_toplevel().geometry('800x600')
         self.winfo_toplevel().resizable(0, 0)
         self.create_components()
         self.pack(fill=tk.BOTH)
