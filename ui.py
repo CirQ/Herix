@@ -47,7 +47,7 @@ class HerixApp(ttk.Notebook):
             else:
                 return 'invalid issue path: ' + res.path
 
-        def _on_button_click():
+        def _on_button_click(event=None):
             content = url.get()
             right_text.config(state=tk.NORMAL)
             bibtex = _generate_bibtex(content)
@@ -61,6 +61,7 @@ class HerixApp(ttk.Notebook):
         url_label = tk.Label(left_panel, text='GitHub Issue URL:')
         url_label.pack(padx=10, anchor='w')
         url = tk.Entry(left_panel, width=48)
+        url.bind('<Return>', _on_button_click)
         url.pack(padx=10, pady=4)
         button = ttk.Button(left_panel, text='generate', command=_on_button_click)
         button.pack()
