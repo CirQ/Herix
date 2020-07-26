@@ -84,6 +84,15 @@ class HerixApp(ttk.Notebook):
         FORK = re.compile(r'/members$')
 
         def _crawl_profile(content):
+
+            def _find_commits(tree):
+                svg = tree.find('svg', class_='octicon-history')
+                strong = svg.next_sibling
+                while strong.find('strong') == -1:
+                    strong = strong.next_sibling
+                strong = strong.find('strong').text.strip()
+                return int(strong.replace(',', ''))
+
             res = urlparse(content)
             if res.netloc != 'github.com':
                 raise ValueError('Invalid')
@@ -95,7 +104,8 @@ class HerixApp(ttk.Notebook):
                 watch = int(b.find('a', {'href':WATCH})['aria-label'].split()[0])
                 star = int(b.find('a', {'href':STAR})['aria-label'].split()[0])
                 fork = int(b.find('a', {'href':FORK})['aria-label'].split()[0])
-                return watch, star, fork
+                commit = _find_commits(b)
+                return watch, star, fork, commit
             else:
                 raise ValueError('Invalid')
 
@@ -108,14 +118,16 @@ class HerixApp(ttk.Notebook):
         def _on_button_click(event=None):
             content = url.get()
             try:
-                watch, star, fork = _crawl_profile(content)
+                watch, star, fork, commit = _crawl_profile(content)
                 _set_text(watch_text, str(watch))
                 _set_text(star_text, str(star))
                 _set_text(fork_text, str(fork))
+                _set_text(commit_text, str(commit))
             except (ValueError, TypeError):
                 _set_text(watch_text, 'Invalid URL!')
                 _set_text(star_text, '')
                 _set_text(fork_text, '')
+                _set_text(commit_text, '')
 
         base = ttk.Frame(self)
         left_panel = tk.Frame(base)
@@ -153,6 +165,14 @@ class HerixApp(ttk.Notebook):
         fork_text = tk.Entry(fork_panel, width=32)
         fork_text.pack(padx=4, pady=8)
         fork_text.config(state=tk.DISABLED, disabledbackground='white')
+
+        commit_panel = tk.Frame(right_panel)
+        commit_panel.pack(anchor='e')
+        commit_label = tk.Label(commit_panel, text='Commit Num.')
+        commit_label.pack(side=tk.LEFT, padx=4, pady=8)
+        commit_text = tk.Entry(commit_panel, width=32)
+        commit_text.pack(padx=4, pady=8)
+        commit_text.config(state=tk.DISABLED, disabledbackground='white')
 
         return base
 
