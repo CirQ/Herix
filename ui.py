@@ -45,7 +45,7 @@ class HerixApp(ttk.Notebook):
 }}
                 """.format(user=user, repo=repo, iid=iid, date=today)
             else:
-                return 'invalid path: ' + res.path
+                return 'invalid issue path: ' + res.path
 
         def _on_button_click():
             content = url.get()
@@ -58,18 +58,15 @@ class HerixApp(ttk.Notebook):
         base = tk.Frame(self)
         left_panel = tk.Frame(base)
         left_panel.pack(side=tk.LEFT)
-        url_label = tk.Label(left_panel, text='GitHub Issue URL')
+        url_label = tk.Label(left_panel, text='GitHub Issue URL:')
         url_label.pack(padx=10, anchor='w')
-        url = tk.Entry(left_panel, width=64)
-
-        url.insert(1, 'https://github.com/k9mail/k-9/issues/2110')
-
+        url = tk.Entry(left_panel, width=48)
         url.pack(padx=10, pady=4)
         button = ttk.Button(left_panel, text='generate', command=_on_button_click)
         button.pack()
         right_text = tk.Text(base)
         right_text.config(state=tk.DISABLED)
-        right_text.pack()
+        right_text.pack(padx=4, pady=4)
         return base
 
 
