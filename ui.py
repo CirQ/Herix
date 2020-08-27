@@ -5,7 +5,7 @@ from tkinter import ttk
 from urllib.parse import urlparse
 
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString, Tag
 
 
 class HerixApp(ttk.Notebook):
@@ -16,6 +16,8 @@ class HerixApp(ttk.Notebook):
         self.winfo_toplevel().resizable(0, 0)
         self.create_components()
         self.pack(fill=tk.BOTH)
+        # setting focus
+        self.select(self.tab3)
 
 
     def create_components(self):
@@ -25,9 +27,12 @@ class HerixApp(ttk.Notebook):
         # second function
         self.tab2 = self.create_github_profile()
         self.add(self.tab2, text='GitHub Profile')
+        # third function
+        self.tab3 = self.create_dblp_bibtex()
+        self.add(self.tab3, text='dblp bibtex')
         # next function
-        self.tab3 = ttk.Frame(self)
-        self.add(self.tab3, text='TBU')
+        self.tab4 = ttk.Frame(self)
+        self.add(self.tab4, text='TBU')
 
 
     def create_github_issues(self):
@@ -173,6 +178,161 @@ class HerixApp(ttk.Notebook):
         commit_text = tk.Entry(commit_panel, width=32)
         commit_text.pack(padx=4, pady=8)
         commit_text.config(state=tk.DISABLED, disabledbackground='white')
+
+        return base
+
+
+    def create_dblp_bibtex(self):
+
+        def __ele2str(element):
+            if isinstance(element, NavigableString):
+                return str(element)
+            elif isinstance(element, Tag):
+                return element.text
+
+        def _extract_from(html):
+            papers = dict()
+            b = BeautifulSoup(html, 'lxml')
+            for li in b.select('.publ-list .entry'):
+                # meta
+                id_ = li.attrs['id']
+                class_ = li.attrs['class']
+                class_.remove('entry')
+                class_.remove('toc')
+                assert len(class_) == 1
+
+                # author
+                ait = li.find_all('span', itemprop='author')
+                authors = [it.text for it in ait]
+
+                # title
+                title_ele = li.find('span', class_='title')
+                title_text = title_ele.text
+
+                # venue
+                eles = [__ele2str(it) for it in title_ele.next_siblings]
+                venue = ''.join(eles)
+
+                papers[id_] = (class_[0], authors, title_text, venue)
+            return papers
+
+        # make this in a closure to preserve state
+        paperdict = {
+            'article': [],
+            'inproceedings': [],
+            'book': [],
+            'editor': [],
+            'informal': [],
+        }
+        allpapers = dict()
+        last_url = None
+
+        def _on_search_click(event=None):
+            nonlocal paperdict, last_url
+            content = title.get()
+            if content == last_url:
+                return
+            last_url = content
+
+            url = f'https://dblp.uni-trier.de/search?q={content}'
+            html = requests.get(url)
+            papers = _extract_from(html.text)
+            for id_, (class_, authors, title_txt, venue) in papers.items():
+                for k, v in paperdict.items():
+                    if k in class_:
+                        v.append(id_)
+                        break
+                else:  # break does not happen
+                    print('Unknown class:', class_)
+            allpapers.update(papers)
+            _update_paper_tabs()
+
+        def _update_paper_tabs():
+            for class_, papers in paperdict.items():
+                tab = {
+                    'article': tab_journal,
+                    'inproceedings': tab_conference,
+                    'book': tab_book,
+                    'editor': tab_editor,
+                    'informal': tab_informal,
+                }.get(class_)
+                for paperid in papers:
+                    _, authors, title_txt, venue = allpapers[paperid]
+                    # ic = frame'{" | ".join(authors)}\n{title_txt}\n{venue}'
+                    title_item = tk.StringVar(tab, name=title_txt, value=paperid)
+                    tab.insert('end', f' {title_item}')
+
+        last_paper = None
+        cached_bibtex = dict()
+
+        def _on_paper_select(event, tab, class_):
+            nonlocal last_paper
+            idx = tab.curselection()[0]
+            if idx == last_paper:
+                return
+            last_paper = idx
+            if idx not in cached_bibtex:
+                paper = paperdict[class_][idx]
+                url = f'https://dblp.uni-trier.de/rec/{paper}.html?view=bibtex'
+                html = requests.get(url).text
+                b = BeautifulSoup(html, 'lxml')
+                verbatim = b.select_one('.verbatim')
+                cached_bibtex[idx] = verbatim.text
+            bibtex = cached_bibtex[idx]
+            right_text.config(state=tk.NORMAL)
+            right_text.delete(1.0, tk.END)
+            right_text.insert(1.0, bibtex.strip())
+            right_text.config(state=tk.DISABLED)
+
+        def _create_paper_tab(master, class_):
+            baseframe = tk.Frame(master)
+            scrollx = tk.Scrollbar(baseframe, orient=tk.HORIZONTAL)
+            scrolly = tk.Scrollbar(baseframe)
+            tab = tk.Listbox(baseframe, xscrollcommand=scrollx.set, yscrollcommand=scrolly.set)
+            scrollx.config(command=tab.xview)
+            scrolly.config(command=tab.yview)
+            scrollx.pack(fill=tk.X, side=tk.BOTTOM)
+            scrolly.pack(fill=tk.Y, side=tk.RIGHT)
+            tab.pack(expand=True, fill=tk.BOTH, side=tk.LEFT)
+            tab.bind('<<ListboxSelect>>', lambda e: _on_paper_select(e, tab, class_))
+            baseframe.pack()
+            return tab, baseframe
+
+        base = ttk.Frame(self)
+        left_panel = tk.Frame(base)
+        left_panel.pack(padx=4, side=tk.LEFT)
+
+        lt = tk.Frame(left_panel)
+        lt.pack(side=tk.TOP)
+        title_label = tk.Label(lt, text='Paper Title:')
+        title_label.pack(padx=10, anchor='w')
+        title = tk.Entry(lt, width=60)
+        title.bind('<Return>', _on_search_click)
+        title.pack(padx=4, side=tk.LEFT)
+        button = ttk.Button(lt, text='search', command=_on_search_click)
+        button.pack(padx=4, side=tk.RIGHT)
+
+        nb = ttk.Notebook(left_panel)
+        nb.pack(expand=True, fill=tk.BOTH, padx=4, pady=8, side=tk.BOTTOM)
+
+        tab_journal, frame = _create_paper_tab(nb, 'article')
+        nb.add(frame, text='journal')
+
+        tab_conference, frame = _create_paper_tab(nb, 'inproceedings')
+        nb.add(frame, text='conference')
+
+        tab_book, frame = _create_paper_tab(nb, 'book')
+        nb.add(frame, text='book')
+
+        tab_editor, frame = _create_paper_tab(nb, 'editor')
+        nb.add(frame, text='editor')
+
+        tab_informal, frame = _create_paper_tab(nb, 'informal')
+        nb.add(frame, text='informal')
+
+        right_text = tk.Text(base, width=64)
+        right_text.config(state=tk.DISABLED)
+        right_text.pack(padx=(0, 10), pady=4, side=tk.RIGHT)
 
         return base
 
