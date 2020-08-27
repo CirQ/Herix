@@ -184,6 +184,8 @@ class HerixApp(ttk.Notebook):
 
     def create_dblp_bibtex(self):
 
+        perquery = 30
+
         def __ele2str(element):
             if isinstance(element, NavigableString):
                 return str(element)
@@ -228,14 +230,15 @@ class HerixApp(ttk.Notebook):
             'informal': [],
         }
         allpapers = dict()
-        last_url = None
+        last_title = None
 
         def _on_search_click(event=None):
-            nonlocal paperdict, last_url
+            nonlocal paperdict, last_title, last_page
             content = title.get()
-            if content == last_url:
+            if content == last_title:
                 return
-            last_url = content
+            last_title = content
+            last_page = 0
 
             [v.clear() for v in paperdict.values()]
 
@@ -252,7 +255,7 @@ class HerixApp(ttk.Notebook):
             allpapers.update(papers)
             _update_paper_tabs(first, True)
 
-        def _update_paper_tabs(first_class, clear_item=False):
+        def _update_paper_tabs(first_class, renew_focus=False):
             tabs = {
                 'article': (tab_journal, frame_journal),
                 'inproceedings': (tab_conference, frame_conference),
@@ -261,8 +264,7 @@ class HerixApp(ttk.Notebook):
                 'informal': (tab_informal, frame_informal),
             }
 
-            if clear_item:
-                [t[0].delete(0, tk.END) for t in tabs.values()]
+            [t[0].delete(0, tk.END) for t in tabs.values()]
 
             for class_, papers in paperdict.items():
                 tab = tabs.get(class_)[0]
@@ -271,7 +273,8 @@ class HerixApp(ttk.Notebook):
                     # ic = frame'{" | ".join(authors)}\n{title_txt}\n{venue}'
                     title_item = tk.StringVar(tab, name=title_txt, value=paperid)
                     tab.insert('end', f' {title_item}')
-            nb.select(tabs[first_class][1])
+            if renew_focus:
+                nb.select(tabs[first_class][1])
 
         last_paper = None
         cached_bibtex = dict()
@@ -311,6 +314,28 @@ class HerixApp(ttk.Notebook):
             baseframe.pack()
             return tab, baseframe
 
+        last_page = 0
+
+        def _on_more_click(event=None):
+            nonlocal paperdict, last_page
+            content = title.get()
+            if content == '' or content != last_title:
+                return
+            last_page += 1
+
+            url = f'https://dblp.uni-trier.de/search/publ/inc?q={content}&h={perquery}&b={last_page}'
+            html = requests.get(url)
+            papers, _ = _extract_from(html.text)
+            for id_, (class_, authors, title_txt, venue) in papers.items():
+                for k, v in paperdict.items():
+                    if k in class_:
+                        v.append(id_)
+                        break
+                else:  # break does not happen
+                    print('Unknown class:', class_)
+            allpapers.update(papers)
+            _update_paper_tabs(None)
+
         base = ttk.Frame(self)
         left_panel = tk.Frame(base)
         left_panel.pack(padx=4, side=tk.LEFT)
@@ -326,22 +351,20 @@ class HerixApp(ttk.Notebook):
         button.pack(padx=4, side=tk.RIGHT)
 
         nb = ttk.Notebook(left_panel)
-        nb.pack(expand=True, fill=tk.BOTH, padx=4, pady=8, side=tk.BOTTOM)
-
+        nb.pack(expand=True, fill=tk.BOTH, padx=4, pady=8)
         tab_journal, frame_journal = _create_paper_tab(nb, 'article')
         nb.add(frame_journal, text='journal')
-
         tab_conference, frame_conference = _create_paper_tab(nb, 'inproceedings')
         nb.add(frame_conference, text='conference')
-
         tab_book, frame_book = _create_paper_tab(nb, 'book')
         nb.add(frame_book, text='book')
-
         tab_editor, frame_editor = _create_paper_tab(nb, 'editor')
         nb.add(frame_editor, text='editor')
-
         tab_informal, frame_informal = _create_paper_tab(nb, 'informal')
         nb.add(frame_informal, text='informal')
+
+        more_btn = tk.Button(left_panel, text='more results', command=_on_more_click)
+        more_btn.pack(pady=(10, 0), side=tk.BOTTOM)
 
         right_panel = tk.Frame(base)
         right_panel.pack(side=tk.RIGHT)
