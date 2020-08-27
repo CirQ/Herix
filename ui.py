@@ -254,24 +254,24 @@ class HerixApp(ttk.Notebook):
 
         def _update_paper_tabs(first_class, clear_item=False):
             tabs = {
-                'article': tab_journal,
-                'inproceedings': tab_conference,
-                'book': tab_book,
-                'editor': tab_editor,
-                'informal': tab_informal,
+                'article': (tab_journal, frame_journal),
+                'inproceedings': (tab_conference, frame_conference),
+                'book': (tab_book, frame_book),
+                'editor': (tab_editor, frame_editor),
+                'informal': (tab_informal, frame_informal),
             }
 
             if clear_item:
-                [t.delete(0, tk.END) for t in tabs.values()]
+                [t[0].delete(0, tk.END) for t in tabs.values()]
 
             for class_, papers in paperdict.items():
-                tab = tabs.get(class_)
+                tab = tabs.get(class_)[0]
                 for paperid in papers:
                     _, authors, title_txt, venue = allpapers[paperid]
                     # ic = frame'{" | ".join(authors)}\n{title_txt}\n{venue}'
                     title_item = tk.StringVar(tab, name=title_txt, value=paperid)
                     tab.insert('end', f' {title_item}')
-            tabs[first_class].focus_set()
+            nb.select(tabs[first_class][1])
 
         last_paper = None
         cached_bibtex = dict()
@@ -326,20 +326,20 @@ class HerixApp(ttk.Notebook):
         nb = ttk.Notebook(left_panel)
         nb.pack(expand=True, fill=tk.BOTH, padx=4, pady=8, side=tk.BOTTOM)
 
-        tab_journal, frame = _create_paper_tab(nb, 'article')
-        nb.add(frame, text='journal')
+        tab_journal, frame_journal = _create_paper_tab(nb, 'article')
+        nb.add(frame_journal, text='journal')
 
-        tab_conference, frame = _create_paper_tab(nb, 'inproceedings')
-        nb.add(frame, text='conference')
+        tab_conference, frame_conference = _create_paper_tab(nb, 'inproceedings')
+        nb.add(frame_conference, text='conference')
 
-        tab_book, frame = _create_paper_tab(nb, 'book')
-        nb.add(frame, text='book')
+        tab_book, frame_book = _create_paper_tab(nb, 'book')
+        nb.add(frame_book, text='book')
 
-        tab_editor, frame = _create_paper_tab(nb, 'editor')
-        nb.add(frame, text='editor')
+        tab_editor, frame_editor = _create_paper_tab(nb, 'editor')
+        nb.add(frame_editor, text='editor')
 
-        tab_informal, frame = _create_paper_tab(nb, 'informal')
-        nb.add(frame, text='informal')
+        tab_informal, frame_informal = _create_paper_tab(nb, 'informal')
+        nb.add(frame_informal, text='informal')
 
         right_text = tk.Text(base, width=64)
         right_text.config(state=tk.DISABLED)
