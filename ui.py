@@ -278,18 +278,20 @@ class HerixApp(ttk.Notebook):
 
         def _on_paper_select(event, tab, class_):
             nonlocal last_paper
-            idx = tab.curselection()[0]
-            if idx == last_paper:
-                return
-            last_paper = idx
-            if idx not in cached_bibtex:
+            try:
+                idx = tab.curselection()[0]
                 paper = paperdict[class_][idx]
+                assert paper != last_paper
+            except (IndexError, AssertionError):
+                return
+            last_paper = paper
+            if paper not in cached_bibtex:
                 url = f'https://dblp.uni-trier.de/rec/{paper}.html?view=bibtex'
                 html = requests.get(url).text
                 b = BeautifulSoup(html, 'lxml')
                 verbatim = b.select_one('.verbatim')
-                cached_bibtex[idx] = verbatim.text
-            bibtex = cached_bibtex[idx]
+                cached_bibtex[paper] = verbatim.text
+            bibtex = cached_bibtex[paper]
             right_text.config(state=tk.NORMAL)
             right_text.delete(1.0, tk.END)
             right_text.insert(1.0, bibtex.strip())
@@ -341,8 +343,13 @@ class HerixApp(ttk.Notebook):
         tab_informal, frame_informal = _create_paper_tab(nb, 'informal')
         nb.add(frame_informal, text='informal')
 
-        right_text = tk.Text(base, width=64)
+        right_panel = tk.Frame(base)
+        right_panel.pack(side=tk.RIGHT)
+        scroll = tk.Scrollbar(right_panel, orient=tk.HORIZONTAL)
+        scroll.pack(fill=tk.X, side=tk.BOTTOM)
+        right_text = tk.Text(right_panel, wrap=tk.NONE, xscrollcommand=scroll.set)
         right_text.config(state=tk.DISABLED)
+        scroll.config(command=right_text.xview)
         right_text.pack(padx=(0, 10), pady=4, side=tk.RIGHT)
 
         return base
