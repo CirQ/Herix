@@ -193,6 +193,7 @@ class HerixApp(ttk.Notebook):
         def _extract_from(html):
             papers = dict()
             b = BeautifulSoup(html, 'lxml')
+            first = None
             for li in b.select('.publ-list .entry'):
                 # meta
                 id_ = li.attrs['id']
@@ -214,7 +215,9 @@ class HerixApp(ttk.Notebook):
                 venue = ''.join(eles)
 
                 papers[id_] = (class_[0], authors, title_text, venue)
-            return papers
+                if first is None:
+                    first = class_[0]
+            return papers, first
 
         # make this in a closure to preserve state
         paperdict = {
@@ -234,9 +237,11 @@ class HerixApp(ttk.Notebook):
                 return
             last_url = content
 
+            [v.clear() for v in paperdict.values()]
+
             url = f'https://dblp.uni-trier.de/search?q={content}'
             html = requests.get(url)
-            papers = _extract_from(html.text)
+            papers, first = _extract_from(html.text)
             for id_, (class_, authors, title_txt, venue) in papers.items():
                 for k, v in paperdict.items():
                     if k in class_:
@@ -245,22 +250,28 @@ class HerixApp(ttk.Notebook):
                 else:  # break does not happen
                     print('Unknown class:', class_)
             allpapers.update(papers)
-            _update_paper_tabs()
+            _update_paper_tabs(first, True)
 
-        def _update_paper_tabs():
+        def _update_paper_tabs(first_class, clear_item=False):
+            tabs = {
+                'article': tab_journal,
+                'inproceedings': tab_conference,
+                'book': tab_book,
+                'editor': tab_editor,
+                'informal': tab_informal,
+            }
+
+            if clear_item:
+                [t.delete(0, tk.END) for t in tabs.values()]
+
             for class_, papers in paperdict.items():
-                tab = {
-                    'article': tab_journal,
-                    'inproceedings': tab_conference,
-                    'book': tab_book,
-                    'editor': tab_editor,
-                    'informal': tab_informal,
-                }.get(class_)
+                tab = tabs.get(class_)
                 for paperid in papers:
                     _, authors, title_txt, venue = allpapers[paperid]
                     # ic = frame'{" | ".join(authors)}\n{title_txt}\n{venue}'
                     title_item = tk.StringVar(tab, name=title_txt, value=paperid)
                     tab.insert('end', f' {title_item}')
+            tabs[first_class].focus_set()
 
         last_paper = None
         cached_bibtex = dict()
