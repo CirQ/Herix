@@ -23,13 +23,13 @@ class HerixApp(ttk.Notebook):
     def create_components(self):
         # first function
         self.tab1 = self.create_github_issues()
-        self.add(self.tab1, text='GitHub Issues')
+        self.add(self.tab1, text='GitHub Issue')
         # second function
         self.tab2 = self.create_github_profile()
         self.add(self.tab2, text='GitHub Profile')
         # third function
         self.tab3 = self.create_dblp_bibtex()
-        self.add(self.tab3, text='dblp bibtex')
+        self.add(self.tab3, text='dblp Bibtex')
         # next function
         self.tab4 = ttk.Frame(self)
         self.add(self.tab4, text='TBU')
