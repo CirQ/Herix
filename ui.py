@@ -128,11 +128,14 @@ class HerixApp(ttk.Notebook):
                 _set_text(star_text, str(star))
                 _set_text(fork_text, str(fork))
                 _set_text(commit_text, str(commit))
+                dtstr = datetime.now().strftime('%c')
+                date_label.config(text=f'Crawled on {dtstr}')
             except (ValueError, TypeError):
                 _set_text(watch_text, 'Invalid URL!')
                 _set_text(star_text, '')
                 _set_text(fork_text, '')
                 _set_text(commit_text, '')
+                date_label.config(text='Crawled Date.')
 
         base = ttk.Frame(self)
         left_panel = tk.Frame(base)
@@ -178,6 +181,11 @@ class HerixApp(ttk.Notebook):
         commit_text = tk.Entry(commit_panel, width=32)
         commit_text.pack(padx=4, pady=8)
         commit_text.config(state=tk.DISABLED, disabledbackground='white')
+
+        date_panel = tk.Frame(right_panel)
+        date_panel.pack(anchor='w')
+        date_label = tk.Label(date_panel, text='Crawled Date.')
+        date_label.pack(side=tk.LEFT, padx=4, pady=8)
 
         return base
 
